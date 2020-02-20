@@ -7,7 +7,8 @@
 
 package frc.robot;
 
-import edu.wpi.first.wpilibj.AnalogGyro;
+import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.controller.PIDController;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -44,16 +45,18 @@ public class Robot extends TimedRobot
   private final DifferentialDrive m_robotDrive = new DifferentialDrive(m_left, m_right);
   
   final XboxController m_driverController = new XboxController(RobotMap.kDriverControllerPort);
-  private final AnalogGyro m_gyro = new AnalogGyro(RobotMap.kGyroPort);
 
-  private final Debouncer aButton = new Debouncer(m_driverController, 1);
-  private final Debouncer bButton = new Debouncer(m_driverController, 2);
-  private final Debouncer xButton = new Debouncer(m_driverController, 3);
-  private final Debouncer yButton = new Debouncer(m_driverController, 4);
-  private final Debouncer startButton = new Debouncer(m_driverController, 8);
+  private final Debouncer aButton = new Debouncer(m_driverController, RobotMap.kAPort);
+  private final Debouncer bButton = new Debouncer(m_driverController, RobotMap.kBPort);
+  private final Debouncer xButton = new Debouncer(m_driverController, RobotMap.kXPort);
+  private final Debouncer yButton = new Debouncer(m_driverController, RobotMap.kYPort);
+  private final Debouncer startButton = new Debouncer(m_driverController, RobotMap.kStartPort);
+  private final Debouncer lbButton = new Debouncer(m_driverController, RobotMap.kLBPort);
+  private final Debouncer rbButton = new Debouncer(m_driverController, RobotMap.kRBPort);
 
   private int driveType = 0;
-  private double speed = 1;
+  private double speed = -1;
+  private boolean isStopped = false;
   /**
    * This function is run when the robot is first started up and should be
    * used for any initialization code.
@@ -128,7 +131,7 @@ public class Robot extends TimedRobot
     // That means that the Y axis of the left stick moves forward
     // and backward, and the X of the right stick turns left and right.
     
-    if(aButton.get())
+    if(rbButton.get())
     {
       if(driveType == 2)
       {
@@ -138,31 +141,34 @@ public class Robot extends TimedRobot
       {
         driveType ++;
       }
+      System.out.println("DriveType: " + driveType);
     }
 
-    if(startButton.get())
+    if(lbButton.get())
     {
-      if(speed == 1)
-      {
-        speed = 0;
-      }
-      else
-      {
-        speed += .5;
-      }
+      speed = (speed == -1? -0.5: -1);
+      System.out.println("Speed: " + speed);
     }
     
+    if(startButton.get())
+    {
+      isStopped = !isStopped;
+      System.out.println("isStopped: " + isStopped);
+    }
 
     switch (driveType)
     {
       case 0:
-        m_robotDrive.arcadeDrive(speed * m_driverController.getY(Hand.kLeft), speed * m_driverController.getX(Hand.kRight));
+        m_robotDrive.arcadeDrive((isStopped? 0:1) * speed * m_driverController.getY(Hand.kLeft), 
+        speed * m_driverController.getX(Hand.kRight));
         break;
       case 1:
-        m_robotDrive.tankDrive(speed * m_driverController.getY(Hand.kLeft), speed * m_driverController.getY(Hand.kRight));
+        m_robotDrive.tankDrive((isStopped? 0:1) * speed * m_driverController.getY(Hand.kLeft), 
+        speed * m_driverController.getY(Hand.kRight));
         break;
       case 2:
-        m_robotDrive.curvatureDrive(speed * m_driverController.getY(Hand.kLeft), speed * m_driverController.getX(Hand.kRight), false);
+        m_robotDrive.curvatureDrive((isStopped? 0:1) * speed * m_driverController.getY(Hand.kLeft), 
+        speed * m_driverController.getX(Hand.kRight), false);
         break;
     }
   }
