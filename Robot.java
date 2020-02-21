@@ -6,6 +6,7 @@
 /*----------------------------------------------------------------------------*/
 
 package frc.robot;
+package com.kauailabs.navx.frc; //have to fix this. figure out how to import the AHRS class.
 
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.controller.PIDController;
@@ -179,5 +180,12 @@ public class Robot extends TimedRobot
   @Override
   public void testPeriodic() {
     System.out.println("Test!");
+  }
+
+
+  public double getGyroValue() {
+    double totalYaw = AHRS.getAngle();
+
+    return totalYaw;
   }
 }
