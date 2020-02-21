@@ -19,4 +19,7 @@ public class RobotMap
     public static final int kStartPort = 8;
     public static final int kLStickPort = 9;
     public static final int kRStickPort = 10;
+
+    public static final int kDpadVerticalPort = 5;
+    public static final int kDpadHorizontalPort = 6;
 }

@@ -6,10 +6,7 @@
 /*----------------------------------------------------------------------------*/
 
 package frc.robot;
-package com.kauailabs.navx.frc; //have to fix this. figure out how to import the AHRS class.
 
-import edu.wpi.first.wpilibj.Joystick;
-import edu.wpi.first.wpilibj.controller.PIDController;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -20,6 +17,8 @@ import edu.wpi.first.wpilibj.SpeedController;
 import edu.wpi.first.wpilibj.SpeedControllerGroup;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.Solenoid;
+import edu.wpi.first.wpilibj.Compressor;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -47,15 +46,17 @@ public class Robot extends TimedRobot
   
   final XboxController m_driverController = new XboxController(RobotMap.kDriverControllerPort);
 
-  private final Debouncer aButton = new Debouncer(m_driverController, RobotMap.kAPort);
-  private final Debouncer bButton = new Debouncer(m_driverController, RobotMap.kBPort);
-  private final Debouncer xButton = new Debouncer(m_driverController, RobotMap.kXPort);
-  private final Debouncer yButton = new Debouncer(m_driverController, RobotMap.kYPort);
+  private double LyValue;
+  private double RxValue;
+  private double RyValue;
+
   private final Debouncer startButton = new Debouncer(m_driverController, RobotMap.kStartPort);
   private final Debouncer lbButton = new Debouncer(m_driverController, RobotMap.kLBPort);
   private final Debouncer rbButton = new Debouncer(m_driverController, RobotMap.kRBPort);
+  private final DPadCalc Dpad = new DPadCalc(m_driverController);
 
-  private int driveType = 0;
+  private int selectedDrive = 0;
+  private boolean driveType = true;
   private double speed = -1;
   private boolean isStopped = false;
   /**
@@ -113,7 +114,7 @@ public class Robot extends TimedRobot
         m_autoTimer = Timer.getFPGATimestamp();
         if (m_autoTimer <= 5)
         {
-          m_robotDrive.arcadeDrive(speed, 0);
+          m_robotDrive.arcadeDrive(-0.5, 0);
         }
           break;
       case kDefaultAuto:
@@ -127,21 +128,15 @@ public class Robot extends TimedRobot
    * This function is called periodically during operator control.
    */
   @Override
-  public void teleopPeriodic() {
+  public void teleopPeriodic() 
+  {
     // Drive with split arcade drive.
     // That means that the Y axis of the left stick moves forward
     // and backward, and the X of the right stick turns left and right.
     
     if(rbButton.get())
     {
-      if(driveType == 2)
-      {
-        driveType = 0;
-      }
-      else
-      {
-        driveType ++;
-      }
+      driveType = !driveType;
       System.out.println("DriveType: " + driveType);
     }
 
@@ -157,21 +152,45 @@ public class Robot extends TimedRobot
       System.out.println("isStopped: " + isStopped);
     }
 
-    switch (driveType)
+    if (driveType)
     {
-      case 0:
-        m_robotDrive.arcadeDrive((isStopped? 0:1) * speed * m_driverController.getY(Hand.kLeft), 
-        speed * m_driverController.getX(Hand.kRight));
-        break;
+      if (Math.abs(m_driverController.getY(Hand.kLeft)) > 0.1)
+      {
+        selectedDrive = 0;
+      }
+      else
+      {
+        selectedDrive = 1;
+      }
+    }
+    else
+    {
+      selectedDrive = 2;
+    }
+
+    RyValue = m_driverController.getY(Hand.kRight);
+    RxValue = m_driverController.getX(Hand.kRight);
+    LyValue = m_driverController.getY(Hand.kRight);
+
+    switch(Dpad.get())
+    {
       case 1:
-        m_robotDrive.tankDrive((isStopped? 0:1) * speed * m_driverController.getY(Hand.kLeft), 
-        speed * m_driverController.getY(Hand.kRight));
+        //turn right
         break;
       case 2:
-        m_robotDrive.curvatureDrive((isStopped? 0:1) * speed * m_driverController.getY(Hand.kLeft), 
-        speed * m_driverController.getX(Hand.kRight), false);
+        //turn forward
+        break;
+      case 3:
+        //turn right
+        break;
+      case 4:
+        //turn back
+        break;
+      default:
         break;
     }
+
+    execute();
   }
 
   /**
@@ -182,10 +201,19 @@ public class Robot extends TimedRobot
     System.out.println("Test!");
   }
 
-
-  public double getGyroValue() {
-    double totalYaw = AHRS.getAngle();
-
-    return totalYaw;
+  public void execute()
+  {
+    switch(selectedDrive)
+    {
+      case 0:
+        m_robotDrive.curvatureDrive((isStopped? 0:1) * speed * LyValue, 
+        (isStopped? 0:1) * speed * RxValue, false);
+      case 1:
+        m_robotDrive.arcadeDrive((isStopped? 0:1) * speed * LyValue, 
+        (isStopped? 0:1) * speed * RxValue);
+      case 2:
+        m_robotDrive.tankDrive((isStopped? 0:1) * speed * LyValue, 
+        (isStopped? 0:1) * speed * RyValue);
+    }
   }
 }
