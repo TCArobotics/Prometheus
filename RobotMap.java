@@ -22,4 +22,6 @@ public class RobotMap
 
     public static final int kDpadVerticalPort = 5;
     public static final int kDpadHorizontalPort = 6;
+
+    public static final int kgyroPort = 1;
 }

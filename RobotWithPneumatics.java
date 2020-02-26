@@ -20,8 +20,6 @@ import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
-import edu.wpi.first.wpilibj.smartdashboard.*;
-import com.kauailabs.navx.frc.AHRS;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -30,7 +28,7 @@ import com.kauailabs.navx.frc.AHRS;
  * creating this project, you must also update the build.gradle file in the
  * project.
  */
-public class Robot extends TimedRobot 
+public class RobotWithPneumatics extends TimedRobot 
 {
   private static final String kDefaultAuto = "Default";
   private static final String kCustomAuto = "My Auto";
@@ -47,20 +45,15 @@ public class Robot extends TimedRobot
   private final SpeedControllerGroup m_left = new SpeedControllerGroup(m_frontLeft, m_rearLeft);
   private final SpeedControllerGroup m_right = new SpeedControllerGroup(m_frontRight, m_rearRight);
   private final DifferentialDrive m_robotDrive = new DifferentialDrive(m_left, m_right);
-
-  private Compressor c_compressor = new Compressor (0);
-  private boolean c_enabled = c_compressor.enabled();
-  private boolean c_pressureSwitch = c_compressor.getPressureSwitchValue();
-  private double c_current = c_compressor.getCompressorCurrent();
-  private DoubleSolenoid solenoid = new DoubleSolenoid(1,2);
+  private final Compressor c_compressor = new Compressor(0);
+  private final boolean c_enabled = c_compressor.enabled();
+  private final boolean c_pressureSwitch = c_compressor.getPressureSwitchValue();
+  private final double c_current = c_compressor.getCompressorCurrent();
+  private final DoubleSolenoid solenoid = new DoubleSolenoid(1, 2);
   private String pistonState = "retracted";
-
-  private double heading;
-  private double headingError = 1;
-  private double leftMultiplier = 1;
-  private double rightMultiplier = 1;
-
-  private final AHRS gyro = new AHRS(RobotMap.kgyroPort); 
+  private final double leftMultiplier = 1.1;
+  private final double rightMultiplier = 1;
+  private double currentTime;
   //solenoid.set(kOff);
   //solenoid.set(kForward);
   //solenoid.set(kBackward);
@@ -121,7 +114,6 @@ public class Robot extends TimedRobot
   @Override
   public void autonomousInit() {
     m_autoSelected = m_chooser.getSelected();
-    heading = gyro.getAngle();
     // m_autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
     System.out.println("Auto selected: " + m_autoSelected);
   }
@@ -133,12 +125,12 @@ public class Robot extends TimedRobot
   public void autonomousPeriodic() {
     switch (m_autoSelected) {
       case kCustomAuto:
-        m_autoTimerFirst = Timer.getFPGATimestamp();
+      m_autoTimerFirst = Timer.getFPGATimestamp();
         System.out.println(m_autoTimerFirst);
         while (m_autoTimerCurrent - m_autoTimerFirst <= 5)
         {
           m_autoTimerCurrent = Timer.getFPGATimestamp();
-          m_robotDrive.tankDrive(.4, .4);
+          m_robotDrive.tankDrive(.25, .3);
         }
           break;
       case kDefaultAuto:
@@ -148,7 +140,7 @@ public class Robot extends TimedRobot
         while (m_autoTimerCurrent - m_autoTimerFirst <= 5)
         {
           m_autoTimerCurrent = Timer.getFPGATimestamp();
-          m_robotDrive.tankDrive(.4, .4);
+          m_robotDrive.tankDrive(.25, .3);
         }
         break;
     }
@@ -178,7 +170,6 @@ public class Robot extends TimedRobot
         speed = -.5;
       }
       System.out.println("Speed: " + speed);
-      SmartDashboard.putNumber("Drive Speed", speed);
     }
     
     if(startButton.get())
@@ -189,19 +180,20 @@ public class Robot extends TimedRobot
 
     if(aButton.get())
     {
+      //Timer.start();
       if(pistonState == "extended")
       {
         pistonState = "retracted";
         solenoid.set(Value.kReverse);
-        solenoid.set(Value.kOff);
       }
       else
       {
         pistonState = "extended";
         solenoid.set(Value.kForward);
-        solenoid.set(Value.kOff);
       }
     }
+
+    checkSolenoidCurrentTime(Timer.getFPGATimestamp());
 
     if (driveType)
     {
@@ -222,7 +214,6 @@ public class Robot extends TimedRobot
     RyValue = m_driverController.getY(Hand.kRight);
     RxValue = m_driverController.getX(Hand.kRight);
     LyValue = m_driverController.getY(Hand.kLeft);
-    headingError = heading - gyro.getAngle();
 
     switch(Dpad.get())
     {
@@ -271,4 +262,15 @@ public class Robot extends TimedRobot
         break;
     }
   }
+  public void checkSolenoidCurrentTime(double currentTime)
+  {
+    if(currentTime > .5)
+    {
+      solenoid.set(Value.kOff);
+    }
+  }
 }
+
+
+  
+
