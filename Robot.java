@@ -16,9 +16,12 @@ import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.SpeedController;
 import edu.wpi.first.wpilibj.SpeedControllerGroup;
 import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj.Solenoid;
 import edu.wpi.first.wpilibj.Compressor;
+import edu.wpi.first.wpilibj.DoubleSolenoid;
+import edu.wpi.first.wpilibj.smartdashboard.*;
+import com.kauailabs.navx.frc.AHRS;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -32,47 +35,52 @@ public class Robot extends TimedRobot
   private static final String kDefaultAuto = "Default";
   private static final String kCustomAuto = "My Auto";
   private String m_autoSelected;
-  private double m_autoTimer;
+  private double m_autoTimerFirst;
+  private double m_autoTimerCurrent;
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
 
-  //Controllers for solenoids
-  private Solenoid ballDoorSolenoid = new Solenoid(0); //SOLENOID CODE (Add Channel and PCID)
+  private final SpeedController m_frontLeft = new PWMVictorSPX(RobotMap.kFrontLeftPort);
+  private final SpeedController m_rearLeft = new PWMVictorSPX(RobotMap.kRearLeftPort);
+  private final SpeedController m_frontRight = new PWMVictorSPX(RobotMap.kFrontRightPort);
+  private final SpeedController m_rearRight = new PWMVictorSPX(RobotMap.kRearRightPort);
 
-  //Controllers for compressors
-  private Compressor m_pneumaticCompressor = new Compressor(); //SOLENOID CODE (Add PCID)
+  private final SpeedControllerGroup m_left = new SpeedControllerGroup(m_frontLeft, m_rearLeft);
+  private final SpeedControllerGroup m_right = new SpeedControllerGroup(m_frontRight, m_rearRight);
+  private final DifferentialDrive m_robotDrive = new DifferentialDrive(m_left, m_right);
 
-  //Controllers for motors
-  private SpeedController m_frontLeft;
-  private SpeedController m_rearLeft; 
-  private SpeedController m_frontRight;
-  private SpeedController m_rearRight;
+  private Compressor c_compressor = new Compressor (0);
+  private boolean c_enabled = c_compressor.enabled();
+  private boolean c_pressureSwitch = c_compressor.getPressureSwitchValue();
+  private double c_current = c_compressor.getCompressorCurrent();
+  private DoubleSolenoid solenoid = new DoubleSolenoid(1,2);
+  private String pistonState = "retracted";
 
-  //Combines controllers into differential drive
-  private SpeedControllerGroup m_left;
-  private SpeedControllerGroup m_right;
-  private DifferentialDrive m_robotDrive;
+  private double heading;
+  private double headingError = 1;
+  private double leftMultiplier = 1;
+  private double rightMultiplier = 1;
+
+  //private final AHRS gyro = new AHRS(RobotMap.kgyroPort); 
+  //solenoid.set(kOff);
+  //solenoid.set(kForward);
+  //solenoid.set(kBackward);
   
-  //Xbox Controller
-  private XboxController m_driverController;
+  final XboxController m_driverController = new XboxController(RobotMap.kDriverControllerPort);
 
-  //Buttons and controls
-  private DPadCalc Dpad;
-  private Debouncer startButton;
-  private Debouncer lbButton;
-  private Debouncer rbButton;
-  private Debouncer backButton;
-  private Debouncer aButton;
+  private double LyValue;
+  private double RxValue;
+  private double RyValue;
 
-  //Variables that have default values set in robotInit()
-  private boolean driveType; //Stores the state of drive for joysticks
-  private double speed; //Stores the speed the robot is going (-0.5 or -1)
-  private boolean isStopped; //Stores if the robot is stopped
+  private final Debouncer aButton = new Debouncer(m_driverController, RobotMap.kAPort);
+  private final Debouncer startButton = new Debouncer(m_driverController, RobotMap.kStartPort);
+  private final Debouncer lbButton = new Debouncer(m_driverController, RobotMap.kLBPort);
+  private final Debouncer rbButton = new Debouncer(m_driverController, RobotMap.kRBPort);
+  private final DPadCalc Dpad = new DPadCalc(m_driverController);
 
-  //Variables that do not have default values
-  private double LeftDriveInput; //Stores the actual left input value for execute
-  private double RightDriveInput; //Stores the actual right input value for execute
-  private int selectedDrive; //Stores the actual drive type used by the execute function
-
+  private int selectedDrive = 2;
+  private boolean driveType = true;
+  private double speed = -.75;
+  private boolean isStopped = false;
   /**
    * This function is run when the robot is first started up and should be
    * used for any initialization code.
@@ -83,28 +91,6 @@ public class Robot extends TimedRobot
     m_chooser.setDefaultOption("Default Auto", kDefaultAuto);
     m_chooser.addOption("My Auto", kCustomAuto);
     SmartDashboard.putData("Auto choices", m_chooser);
-
-    m_frontLeft = new PWMVictorSPX(RobotMap.kFrontLeftPort);
-    m_rearLeft = new PWMVictorSPX(RobotMap.kRearLeftPort);
-    m_frontRight = new PWMVictorSPX(RobotMap.kFrontRightPort);
-    m_rearRight = new PWMVictorSPX(RobotMap.kRearRightPort);
-
-    m_left = new SpeedControllerGroup(m_frontLeft, m_rearLeft);
-    m_right = new SpeedControllerGroup(m_frontRight, m_rearRight);
-    m_robotDrive = new DifferentialDrive(m_left, m_right);
-    
-    m_driverController = new XboxController(RobotMap.kDriverControllerPort);
-    Dpad = new DPadCalc(m_driverController);
-
-    lbButton = new Debouncer(m_driverController, RobotMap.kLBPort);
-    rbButton = new Debouncer(m_driverController, RobotMap.kRBPort);
-    startButton = new Debouncer(m_driverController, RobotMap.kStartPort);
-    backButton = new Debouncer(m_driverController, RobotMap.kBackPort); //NEW SOLENOID
-    aButton = new Debouncer(m_driverController, RobotMap.kAPort); //NEW SOLENOID
-
-    driveType = true;
-    speed = -1;
-    isStopped = false;
   }
 
   /**
@@ -135,7 +121,7 @@ public class Robot extends TimedRobot
   @Override
   public void autonomousInit() {
     m_autoSelected = m_chooser.getSelected();
-    m_autoTimer = 0;
+    //heading = gyro.getAngle();
     // m_autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
     System.out.println("Auto selected: " + m_autoSelected);
   }
@@ -147,15 +133,23 @@ public class Robot extends TimedRobot
   public void autonomousPeriodic() {
     switch (m_autoSelected) {
       case kCustomAuto:
-        m_autoTimer = Timer.getFPGATimestamp();
-        if (m_autoTimer <= 5)
+        m_autoTimerFirst = Timer.getFPGATimestamp();
+        System.out.println(m_autoTimerFirst);
+        while (m_autoTimerCurrent - m_autoTimerFirst <= 5)
         {
-          m_robotDrive.arcadeDrive(-0.5, 0);
+          m_autoTimerCurrent = Timer.getFPGATimestamp();
+          m_robotDrive.tankDrive(.4, .4);
         }
           break;
       case kDefaultAuto:
       default:
-        // Put default auto code here
+        m_autoTimerFirst = Timer.getFPGATimestamp();
+        System.out.println(m_autoTimerFirst);
+        while (m_autoTimerCurrent - m_autoTimerFirst <= 5)
+        {
+          m_autoTimerCurrent = Timer.getFPGATimestamp();
+          m_robotDrive.tankDrive(.4, .4);
+        }
         break;
     }
   }
@@ -178,8 +172,13 @@ public class Robot extends TimedRobot
 
     if(lbButton.get())
     {
-      speed = (speed == -1? -0.5: -1);
+      speed -= .25;
+      if (speed < -1) 
+      {
+        speed = -.5;
+      }
       System.out.println("Speed: " + speed);
+      SmartDashboard.putNumber("Drive Speed", speed);
     }
     
     if(startButton.get())
@@ -188,36 +187,24 @@ public class Robot extends TimedRobot
       System.out.println("isStopped: " + isStopped);
     }
 
-    if(backButton.get()) //NEW SOLENOID
+    if(aButton.get())
     {
-      if(m_pneumaticCompressor.enabled())
+      if(pistonState == "extended")
       {
-        m_pneumaticCompressor.start();
+        pistonState = "retracted";
+        solenoid.set(Value.kReverse);
+        solenoid.set(Value.kOff);
       }
       else
       {
-        m_pneumaticCompressor.stop();
+        pistonState = "extended";
+        solenoid.set(Value.kForward);
+        solenoid.set(Value.kOff);
       }
     }
 
-    if(aButton.get()) //NEW SOLENOID 
+    if (driveType)
     {
-      if(ballDoorSolenoid.get())
-      {
-        ballDoorSolenoid.set(false);
-      }
-      else
-      {
-        ballDoorSolenoid.set(true);
-      }
-    }
-
-
-
-    LeftDriveInput = m_driverController.getY(Hand.kLeft); //Default LeftDriveInput
-    if (driveType) //If driveType is set to Arcade/Curvature
-    {
-      RightDriveInput = m_driverController.getX(Hand.kRight);
       if (Math.abs(m_driverController.getY(Hand.kLeft)) > 0.1)
       {
         selectedDrive = 0;
@@ -227,25 +214,29 @@ public class Robot extends TimedRobot
         selectedDrive = 1;
       }
     }
-    else //If driveType is set to Tank
-    {
-      RightDriveInput = m_driverController.getY(Hand.kRight);
-      selectedDrive = 2;
+    else
+    { 
+     selectedDrive = 2;
     }
+
+    RyValue = m_driverController.getY(Hand.kRight);
+    RxValue = m_driverController.getX(Hand.kRight);
+    LyValue = m_driverController.getY(Hand.kLeft);
+    //headingError = heading - gyro.getAngle();
 
     switch(Dpad.get())
     {
       case 1:
-        LeftDriveInput = 0;
+        //turn right
         break;
       case 2:
-        LeftDriveInput = 0;
+        //turn forward
         break;
       case 3:
-        LeftDriveInput = 0;
+        //turn right
         break;
       case 4:
-        LeftDriveInput = 0;
+        //turn back
         break;
       default:
         break;
@@ -267,14 +258,17 @@ public class Robot extends TimedRobot
     switch(selectedDrive)
     {
       case 0:
-        m_robotDrive.curvatureDrive((isStopped? 0:1) * speed * LeftDriveInput, 
-        (isStopped? 0:1) * speed * RightDriveInput, false);
+        m_robotDrive.curvatureDrive((isStopped? 0:1) * speed * LyValue, 
+        (isStopped? 0:1) * speed * RxValue, false);
+        break;
       case 1:
-        m_robotDrive.arcadeDrive((isStopped? 0:1) * speed * LeftDriveInput, 
-        (isStopped? 0:1) * speed * RightDriveInput);
+        m_robotDrive.arcadeDrive((isStopped? 0:1) * speed * LyValue, 
+        (isStopped? 0:1) * speed * RxValue);
+        break;
       case 2:
-        m_robotDrive.tankDrive((isStopped? 0:1) * speed * LeftDriveInput, 
-        (isStopped? 0:1) * speed * RightDriveInput);
+        m_robotDrive.tankDrive((isStopped? 0:1) * speed * leftMultiplier * LyValue, 
+        (isStopped? 0:1) * speed * rightMultiplier * RyValue);
+        break;
     }
   }
 }
