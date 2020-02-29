@@ -18,9 +18,11 @@ import edu.wpi.first.wpilibj.SpeedController;
 import edu.wpi.first.wpilibj.SpeedControllerGroup;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj.Solenoid;
+import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.Compressor;
 import com.kauailabs.navx.frc.AHRS;
+import edu.wpi.first.wpilibj.controller.PIDController;
+import edu.wpi.first.cameraserver.CameraServer;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -31,6 +33,7 @@ import com.kauailabs.navx.frc.AHRS;
  */
 public class Robot extends TimedRobot 
 {
+  //Autonomous variables
   private static final String kDefaultAuto = "Default";
   private static final String kCustomAuto = "My Auto";
   private String m_autoSelected;
@@ -39,10 +42,10 @@ public class Robot extends TimedRobot
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
 
   //Controllers for solenoids
-  private Solenoid ballDoorSolenoid = new Solenoid(0); //SOLENOID CODE (Add Channel and PCID)
+  private DoubleSolenoid ballDoorSolenoid;
 
   //Controllers for compressors
-  private Compressor m_pneumaticCompressor = new Compressor(); //SOLENOID CODE (Add PCID)
+  private Compressor m_pneumaticCompressor; //SOLENOID CODE (Add PCID)
 
   //Controllers for navx gyro
   private final AHRS gyro = new AHRS();  //Add PCID
@@ -73,9 +76,16 @@ public class Robot extends TimedRobot
   private boolean driveType; //Stores the state of drive for joysticks
   private double speed; //Stores the speed the robot is going (-0.5 or -1)
   private boolean isStopped; //Stores if the robot is stopped
-  private double heading; //Stores robot heading relative to initial heading
   private double leftMultiplier; //Value to multiply left speed by
   private double rightMultiplier; //Value to multiply right speed by
+
+  static double kP; //turn to angle P constant that will need to be tuned
+  static double kI; //turn to angle I constant that will need to be tuned
+  static double kD; //turn to angle D constant that will need to be tuned
+  static double kF; //turn to angle period constant that will need to be tuned
+  static double kToleranceDegrees; //how close to on target the turn to angle will try to get
+  PIDController turnController; //initializes PID controller for turn heading stabilization
+  boolean rotateToAngle; //whether the robot is currently turning to a specific angle
 
   //Variables that do not have default values
   private double LeftDriveInput; //Stores the actual left input value for execute
@@ -89,6 +99,10 @@ public class Robot extends TimedRobot
   @Override
   public void robotInit() 
   {
+    //Pneumatics
+    ballDoorSolenoid = new DoubleSolenoid(1, 0);
+    m_pneumaticCompressor = new Compressor();
+
     m_chooser.setDefaultOption("Default Auto", kDefaultAuto);
     m_chooser.addOption("My Auto", kCustomAuto);
     SmartDashboard.putData("Auto choices", m_chooser);
@@ -115,7 +129,18 @@ public class Robot extends TimedRobot
     speed = -1;
     isStopped = false;
     leftMultiplier = 1;
-    rightMultiplier = 0.9;
+    rightMultiplier = 0.95;
+
+    kToleranceDegrees = 2;
+    kP = 0.03;
+    kI = 0.00;
+    kD = 0.00;
+    kF = 0.02;
+    turnController = new PIDController(kP, kI, kD, kF);
+    turnController.enableContinuousInput(-180.0, 180.0);
+    turnController.setTolerance(kToleranceDegrees);
+    rotateToAngle = false;
+    gyro.reset();
   }
 
   /**
@@ -129,7 +154,7 @@ public class Robot extends TimedRobot
   @Override
   public void robotPeriodic() 
   {
-    //System.out.println("In robotPeriodic");
+
   }
 
   /**
@@ -148,7 +173,6 @@ public class Robot extends TimedRobot
     m_autoSelected = m_chooser.getSelected();
     m_autoTimerFirst = Timer.getFPGATimestamp();
     // m_autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
-    System.out.println("Auto selected: " + m_autoSelected);
   }
 
   /**
@@ -188,7 +212,6 @@ public class Robot extends TimedRobot
     if(rbButton.get())
     {
       driveType = !driveType;
-      System.out.println("DriveType: " + driveType);
       SmartDashboard.putBoolean("Drive Type", driveType);
     }
 
@@ -199,37 +222,35 @@ public class Robot extends TimedRobot
       {
         speed = -0.5;
       }
-      System.out.println("Speed: " + speed);
       SmartDashboard.putNumber("Drive Speed", speed);
     }
     
     if(startButton.get())
     {
       isStopped = !isStopped;
-      System.out.println("isStopped: " + isStopped);
     }
 
     if(backButton.get()) //NEW SOLENOID
     {
       if(m_pneumaticCompressor.enabled())
       {
-        m_pneumaticCompressor.start();
+        m_pneumaticCompressor.stop();
       }
       else
       {
-        m_pneumaticCompressor.stop();
+        m_pneumaticCompressor.start();
       }
     }
 
     if(aButton.get()) //NEW SOLENOID 
     {
-      if(ballDoorSolenoid.get())
+      if(ballDoorSolenoid.get() == DoubleSolenoid.Value.kForward)
       {
-        ballDoorSolenoid.set(false);
+        ballDoorSolenoid.set(DoubleSolenoid.Value.kReverse);
       }
       else
       {
-        ballDoorSolenoid.set(true);
+        ballDoorSolenoid.set(DoubleSolenoid.Value.kForward);
       }
     }
 
@@ -248,30 +269,42 @@ public class Robot extends TimedRobot
         selectedDrive = 1;
       }
     }
+
     else //If driveType is set to Tank
     {
       RightDriveInput = m_driverController.getY(Hand.kRight);
       selectedDrive = 2;
     }
 
+    rotateToAngle = false;
     switch(Dpad.get())
     {
       case 1:
-        LeftDriveInput = 0;
+        turnController.setSetpoint(-90.0);
+        rotateToAngle = true;
         break;
       case 2:
-        LeftDriveInput = 0;
+        turnController.setSetpoint(0.0);
+        rotateToAngle = true;
         break;
       case 3:
-        LeftDriveInput = 0;
+        turnController.setSetpoint(90.0);
+        rotateToAngle = true;
         break;
       case 4:
-        LeftDriveInput = 0;
+        turnController.setSetpoint(179.9);
+        rotateToAngle = true;
         break;
       default:
         break;
     }
-
+    if (rotateToAngle) 
+    {
+      selectedDrive = 1;
+      RightDriveInput = turnController.calculate(gyro.getAngle());
+      LeftDriveInput = 0;
+    }
+    SmartDashboard.putNumber("Gyro", gyro.getAngle());
     execute();
   }
 
@@ -280,7 +313,7 @@ public class Robot extends TimedRobot
    */
   @Override
   public void testPeriodic() {
-    System.out.println("Test!");
+    
   }
 
   public void execute()
