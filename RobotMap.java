@@ -8,6 +8,7 @@ public class RobotMap
     public static final int kRearRightPort =1;
 
     public static final int kDriverControllerPort = 0;
+    public static final int kManipulatorControllerPort = 1;
     
     public static final int kAPort = 1;
     public static final int kBPort = 2;
@@ -22,4 +23,19 @@ public class RobotMap
 
     public static final int kDpadVerticalPort = 5;
     public static final int kDpadHorizontalPort = 6;
+
+    public static final int kManYPort = 1;
+    public static final int kManBPort = 2;
+    public static final int kManAPort = 3;
+    public static final int kManXPort = 4;
+    public static final int kManULBumperPort = 5;
+    public static final int kManURBumperPort = 6;
+    public static final int kManLLBumperPort = 7;
+    public static final int kManLRBumperPort = 8;
+    public static final int kManMinusPort = 9;
+    public static final int kManPlusPort = 10;
+    public static final int kManLJoyButtonPort = 11;
+    public static final int kManRJoyButtonPort = 12;
+    public static final int kManHomePort = 13;
+    public static final int kManPausePort = 14;
 }

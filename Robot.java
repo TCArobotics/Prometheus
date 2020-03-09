@@ -23,6 +23,7 @@ import edu.wpi.first.wpilibj.Compressor;
 import com.kauailabs.navx.frc.AHRS;
 import edu.wpi.first.wpilibj.controller.PIDController;
 import edu.wpi.first.cameraserver.CameraServer;
+import edu.wpi.first.wpilibj.SPI;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -48,7 +49,7 @@ public class Robot extends TimedRobot
   private Compressor m_pneumaticCompressor; //SOLENOID CODE (Add PCID)
 
   //Controllers for navx gyro
-  private final AHRS gyro = new AHRS();  //Add PCID
+  private final AHRS gyro = new AHRS(SPI.Port.kMXP);  //Add PCID
 
   //Controllers for motors
   private SpeedController m_frontLeft;
@@ -61,16 +62,19 @@ public class Robot extends TimedRobot
   private SpeedControllerGroup m_right;
   private DifferentialDrive m_robotDrive;
   
-  //Xbox Controller
+  //Xbox Controllers
   private XboxController m_driverController;
+  private XboxController m_manipulatorController;
 
-  //Buttons and controls
-  private DPadCalc Dpad;
-  private Debouncer startButton;
-  private Debouncer lbButton;
-  private Debouncer rbButton;
-  private Debouncer backButton;
-  private Debouncer aButton;
+  //Manipulator Buttons and Controls
+  private DPadCalc driveDpad;
+  private Debouncer driveStartButton;
+  private Debouncer driveLbButton;
+  private Debouncer driveRbButton;
+
+  //Driver Buttons and Controls
+  private Debouncer manipHomeButton;
+  private Debouncer manipAButton;
 
   //Variables that have default values set in robotInit()
   private boolean driveType; //Stores the state of drive for joysticks
@@ -99,8 +103,11 @@ public class Robot extends TimedRobot
   @Override
   public void robotInit() 
   {
+    CameraServer.getInstance().startAutomaticCapture();
+    //CameraServer.getInstance().putVideo("Test", 320, 240);
+
     //Pneumatics
-    ballDoorSolenoid = new DoubleSolenoid(1, 0);
+    ballDoorSolenoid = new DoubleSolenoid(0, 1);
     m_pneumaticCompressor = new Compressor();
 
     m_chooser.setDefaultOption("Default Auto", kDefaultAuto);
@@ -117,13 +124,16 @@ public class Robot extends TimedRobot
     m_robotDrive = new DifferentialDrive(m_left, m_right);
     
     m_driverController = new XboxController(RobotMap.kDriverControllerPort);
-    Dpad = new DPadCalc(m_driverController);
+    driveDpad = new DPadCalc(m_driverController);
+    m_manipulatorController = new XboxController(RobotMap.kManipulatorControllerPort);
+    driveDpad = new DPadCalc(m_driverController);
 
-    lbButton = new Debouncer(m_driverController, RobotMap.kLBPort);
-    rbButton = new Debouncer(m_driverController, RobotMap.kRBPort);
-    startButton = new Debouncer(m_driverController, RobotMap.kStartPort);
-    backButton = new Debouncer(m_driverController, RobotMap.kBackPort); //NEW SOLENOID
-    aButton = new Debouncer(m_driverController, RobotMap.kAPort); //NEW SOLENOID
+    driveLbButton = new Debouncer(m_driverController, RobotMap.kLBPort);
+    driveRbButton = new Debouncer(m_driverController, RobotMap.kRBPort);
+    driveStartButton = new Debouncer(m_driverController, RobotMap.kStartPort);
+
+    manipHomeButton = new Debouncer(m_manipulatorController, RobotMap.kManHomePort); //NEW SOLENOID
+    manipAButton = new Debouncer(m_manipulatorController, RobotMap.kManAPort); //NEW SOLENOID
 
     driveType = true;
     speed = -1;
@@ -182,19 +192,21 @@ public class Robot extends TimedRobot
   public void autonomousPeriodic() {
     switch (m_autoSelected) {
       case kCustomAuto:
-      while (m_autoTimerCurrent - m_autoTimerFirst <= 5)
+      while (m_autoTimerCurrent - m_autoTimerFirst <= 6)
       {
         m_autoTimerCurrent = Timer.getFPGATimestamp();
         m_robotDrive.tankDrive(.4, .4);
       }
-          break;
+      //ballDoorSolenoid.set(DoubleSolenoid.Value.kForward);
+      break;
       case kDefaultAuto:
       default:
-      while (m_autoTimerCurrent - m_autoTimerFirst <= 5)
+      while (m_autoTimerCurrent - m_autoTimerFirst <= 6)
       {
         m_autoTimerCurrent = Timer.getFPGATimestamp();
         m_robotDrive.tankDrive(.4, .4);
       }
+      ballDoorSolenoid.set(DoubleSolenoid.Value.kForward);
         break;
     }
   }
@@ -209,13 +221,13 @@ public class Robot extends TimedRobot
     // That means that the Y axis of the left stick moves forward
     // and backward, and the X of the right stick turns left and right.
     
-    if(rbButton.get())
+    if(driveRbButton.get())
     {
       driveType = !driveType;
       SmartDashboard.putBoolean("Drive Type", driveType);
     }
 
-    if(lbButton.get())
+    if(driveLbButton.get())
     {
       speed -=.25;
       if (speed == -1.25)
@@ -225,12 +237,12 @@ public class Robot extends TimedRobot
       SmartDashboard.putNumber("Drive Speed", speed);
     }
     
-    if(startButton.get())
+    if(driveStartButton.get())
     {
       isStopped = !isStopped;
     }
 
-    if(backButton.get()) //NEW SOLENOID
+    if(manipHomeButton.get()) //NEW SOLENOID
     {
       if(m_pneumaticCompressor.enabled())
       {
@@ -242,7 +254,7 @@ public class Robot extends TimedRobot
       }
     }
 
-    if(aButton.get()) //NEW SOLENOID 
+    if(manipAButton.get()) //NEW SOLENOID 
     {
       if(ballDoorSolenoid.get() == DoubleSolenoid.Value.kForward)
       {
@@ -253,13 +265,14 @@ public class Robot extends TimedRobot
         ballDoorSolenoid.set(DoubleSolenoid.Value.kForward);
       }
     }
+    SmartDashboard.putBoolean("Solenoid", ballDoorSolenoid.get()==DoubleSolenoid.Value.kForward);
 
 
 
     LeftDriveInput = m_driverController.getY(Hand.kLeft); //Default LeftDriveInput
     if (driveType) //If driveType is set to Arcade/Curvature
     {
-      RightDriveInput = m_driverController.getX(Hand.kRight);
+      RightDriveInput = m_driverController.getX(Hand.kRight)*-0.75;
       if (Math.abs(m_driverController.getY(Hand.kLeft)) > 0.1)
       {
         selectedDrive = 0;
@@ -277,7 +290,7 @@ public class Robot extends TimedRobot
     }
 
     rotateToAngle = false;
-    switch(Dpad.get())
+    switch(driveDpad.get())
     {
       case 1:
         turnController.setSetpoint(-90.0);
@@ -298,6 +311,7 @@ public class Robot extends TimedRobot
       default:
         break;
     }
+    
     if (rotateToAngle) 
     {
       selectedDrive = 1;
