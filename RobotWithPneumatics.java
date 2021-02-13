@@ -114,6 +114,7 @@ public class RobotWithPneumatics extends TimedRobot
   @Override
   public void autonomousInit() {
     m_autoSelected = m_chooser.getSelected();
+    m_autoTimerFirst = Timer.getFPGATimestamp();
     // m_autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
     System.out.println("Auto selected: " + m_autoSelected);
   }
@@ -123,27 +124,32 @@ public class RobotWithPneumatics extends TimedRobot
    */
   @Override
   public void autonomousPeriodic() {
-    switch (m_autoSelected) {
-      case kCustomAuto:
-      m_autoTimerFirst = Timer.getFPGATimestamp();
-        System.out.println(m_autoTimerFirst);
-        while (m_autoTimerCurrent - m_autoTimerFirst <= 5)
-        {
-          m_autoTimerCurrent = Timer.getFPGATimestamp();
-          m_robotDrive.tankDrive(.25, .3);
-        }
-          break;
-      case kDefaultAuto:
-      default:
-        m_autoTimerFirst = Timer.getFPGATimestamp();
-        System.out.println(m_autoTimerFirst);
-        while (m_autoTimerCurrent - m_autoTimerFirst <= 5)
-        {
-          m_autoTimerCurrent = Timer.getFPGATimestamp();
-          m_robotDrive.tankDrive(.25, .3);
-        }
-        break;
-    }
+    m_autoTimerCurrent = Timer.getFPGATimestamp();
+    //edit time for each section to refine accuracy
+    
+    //code below is for Barrel Racing Path
+    //forward for 7.5 ft
+    drive.calculateautonomous(m_autoTimerCurrent, 0, 5 , 1.0, 1.0, -0.5);
+
+    //drive in a circle with (radius (3ft), speed (-0.5))
+    drive.calculateCircle(m_autoTimerCurrent, 5, 5, -0.5, 3, DISTANCE_BTWN_WHEELS, true);
+
+    //forward for 9 ft
+    drive.calculateautonomous(m_autoTimerCurrent, 10, 5 , 1.0, 1.0, -0.5);
+
+    //drive in a circle with (radius (3ft), speed (-0.5))
+    drive.calculateCircle(m_autoTimerCurrent, 15, 5, -0.5, 3, DISTANCE_BTWN_WHEELS, true);
+     
+    //forward for 7 ft
+    drive.calculateautonomous(m_autoTimerCurrent, 20, 5 , 1.0, 1.0, -0.5);
+
+    //drive in a circle with (radius (3ft), speed (-0.5))
+    drive.calculateCircle(m_autoTimerCurrent, 15, 5, -0.5, 3, DISTANCE_BTWN_WHEELS, true);
+        
+    //forward for 20 ft
+    drive.calculateautonomous(m_autoTimerCurrent, 30, 5 , 1.0, 1.0, -0.5);
+
+    drive.execute();
   }
 
   /**
