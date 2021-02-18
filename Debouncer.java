@@ -24,7 +24,7 @@ public class Debouncer
         this.latest = 0;
         this.debounce_period = _period;
     }
-    public void setDeebouncePeriod(float _period)
+    public void setDebouncePeriod(float _period)
     {
         this.debounce_period = _period;
     }

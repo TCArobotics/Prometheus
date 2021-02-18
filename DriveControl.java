@@ -144,6 +144,44 @@ public class DriveControl{
         this.LeftDriveInput = _leftInput;
         this.speed = _speed;
     }
+
+    //Calculate motor movement based
+    private void calculateAutonomousDrive(double _currentTime, double _startTime, double _duration, double _rightInput, double _leftInput, double _speed)
+    {
+    	//Calculates whether the time span is correct for the function to run
+    	if ((_currentTime >= _startTime) && (_currentTime <= _startTime + _duration))
+        {
+            this.selectedDrive = 2;
+            this.RightDriveInput = _rightInput;
+            this.LeftDriveInput = _leftInput;
+            this.speed = _speed;
+        }
+    }  
+
+    private void calculateAutonomousCircle(double _currentTime, double _startTime, double _duration, double _speed, double _radius, double _distanceBtwnWheels, bool _isClockwise)
+    {
+        //Calculates whether the time span is correct for the function to run
+        //REMEMBER TO MEASURE DISTANCE BETWEEN WHEELS
+        if ((_currentTime >= _startTime) && (_currentTime <= _startTime + _duration))
+            {
+                if (_isClockwise == true)
+                    {
+                        this.selectedDrive = 2;
+                        this.RightDriveInput = 1 / (1 + _radius / _distanceBtwnWheels);
+                        this.LeftDriveInput = 1;
+                        this.speed = _speed;
+                    }
+                    else
+                    {
+                        this.selectedDrive = 2;
+                        this.RightDriveInput = 1;
+                        this.LeftDriveInput = 1 / (1 + _radius / _distanceBtwnWheels);
+                        this.speed = _speed;
+                    }
+            }
+    }
+    
+
     public void execute()
     {
         switch(selectedDrive)
