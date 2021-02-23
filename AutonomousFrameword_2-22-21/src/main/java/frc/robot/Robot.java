@@ -38,7 +38,6 @@ public class Robot extends TimedRobot
   private static final String kDefaultAuto = "Default";
   private static final String kCustomAuto = "My Auto";
   private String m_autoSelected;
-  private double m_autoTimerFirst;
   private double m_autoTimerCurrent;
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
 
@@ -56,9 +55,8 @@ public class Robot extends TimedRobot
   private final double c_current = c_compressor.getCompressorCurrent();
   private final DoubleSolenoid solenoid = new DoubleSolenoid(1, 2);
   private String pistonState = "retracted";
-  private final double CleftMultiplier = 1;
+  private final double CleftMultiplier = 1; //edit these constants to correct for left/right drift
   private final double CrightMultiplier = 1;
-  private double currentTime;
   //solenoid.set(kOff);
   //solenoid.set(kForward);
   //solenoid.set(kBackward);
@@ -66,7 +64,7 @@ public class Robot extends TimedRobot
   final XboxController m_driverController = new XboxController(RobotMap.kDriverControllerPort);
   final DriveControl driveController = new DriveControl();
 
-  private double LyValue;
+  private double LyValue; //value of the joysticks
   private double RxValue;
   private double RyValue;
 
@@ -76,12 +74,16 @@ public class Robot extends TimedRobot
   private final Debouncer rbButton = new Debouncer(m_driverController, RobotMap.kRBPort);
   private final DPadCalc Dpad = new DPadCalc(m_driverController);
 
-  private int selectedDrive = 2;
-  private boolean driveType = true;
-  private double speed = -.75;
-  private boolean isStopped = false;
-  private double distanceBtwnWheels = 0; //set this to the actual value
-  private int autonomousChoice = 1;
+  private int selectedDrive = 2; //Stores the actual drive type used by the execute function (1 = arcade, 2 = curvature, 3 = tank)
+  private boolean driveType = true; //Stores the state of drive for joysticks (1 = arcade/curvature, 2 = tank)
+  private double speed = -.75; //speed of the robot (-1 to 1)
+  private boolean isStopped = false;  //boolean in case of emergency stop
+  private final String barrelRacing = "BarrelRacing"; //the different choices for autonomousChoice
+  private final String slalomPath = "SlalomPath";
+  private final String bouncePath = "BouncePath";
+  private String autonomousChoice = barrelRacing; //which path to default to
+
+
   /**
    * This function is run when the robot is first started up and should be
    * used for any initialization code.
@@ -122,7 +124,6 @@ public class Robot extends TimedRobot
   @Override
   public void autonomousInit() {
     m_autoSelected = m_chooser.getSelected();
-    m_autoTimerFirst = Timer.getFPGATimestamp();
     // m_autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
     System.out.println("Auto selected: " + m_autoSelected);
   }
@@ -137,102 +138,14 @@ public class Robot extends TimedRobot
 
     switch(autonomousChoice) 
     {
-    case 1:
-      //code below is for Barrel Racing Path
-      //forward for 7.5 ft
-      driveController.calculateAutonomousDrive(m_autoTimerCurrent, 0, 5 , 1.0, 1.0, -0.5);
-
-      //drive in a circle with (radius (3ft), speed (-0.5))
-      driveController.calculateAutonomousCircle(m_autoTimerCurrent, 5, 5, -0.5, 3, distanceBtwnWheels, true);
-
-      //forward for 9 ft
-      driveController.calculateAutonomousDrive(m_autoTimerCurrent, 10, 5 , 1.0, 1.0, -0.5);
-
-      //drive in a circle with (radius (3ft), speed (-0.5))
-      driveController.calculateAutonomousCircle(m_autoTimerCurrent, 15, 5, -0.5, 3, distanceBtwnWheels, false);
-
-      //forward for 7 ft
-      driveController.calculateAutonomousDrive(m_autoTimerCurrent, 20, 5 , 1.0, 1.0, -0.5);
-
-      //drive in a circle with (radius (3ft), speed (-0.5))
-      driveController.calculateAutonomousCircle(m_autoTimerCurrent, 15, 5, -0.5, 3, distanceBtwnWheels, false);
-
-      //forward for 20 ft
-      driveController.calculateAutonomousDrive(m_autoTimerCurrent, 30, 5 , 1.0, 1.0, -0.5);
-
-      //execute function
-      driveController.execute();
+    case barrelRacing:
+      barrelRacing();
       break;
-    case 2:
-      //code below is for Slalom Path
-      //drive in a circle with (radius (0ft), speed (-0.5))
-      driveController.calculateAutonomousCircle(m_autoTimerCurrent, 0, 5, -0.5, 0, distanceBtwnWheels, false);
-
-      //forward for 7 ft
-      driveController.calculateAutonomousDrive(m_autoTimerCurrent, 5, 5, 1.0, 1.0, -0.5);
-
-      //drive in a circle with (radius (5ft), speed (-0.5))
-      driveController.calculateAutonomousCircle(m_autoTimerCurrent, 10, 5, -0.5, 5, distanceBtwnWheels, true);
-
-      //forward for 7 ft
-      driveController.calculateAutonomousDrive(m_autoTimerCurrent, 15, 5, 1.0, 1.0, -0.5);
-
-      //drive in a circle with (radius (2.5ft), speed (-0.5))
-      driveController.calculateAutonomousCircle(m_autoTimerCurrent, 20, 5, -0.5, 2.5, distanceBtwnWheels, false);
-
-      //forward for 7 ft
-      driveController.calculateAutonomousDrive(m_autoTimerCurrent, 25, 5, 1.0, 1.0, -0.5);
-
-      //drive in a circle with (radius (5ft), speed (-0.5))
-      driveController.calculateAutonomousCircle(m_autoTimerCurrent, 30, 5, -0.5, 5, distanceBtwnWheels, true);
-
-      //forward for 7 ft
-      driveController.calculateAutonomousDrive(m_autoTimerCurrent, 35, 5, 1.0, 1.0, -0.5);
-
-      //drive in a circle with (radius (0ft), speed (-0.5))
-      driveController.calculateAutonomousCircle(m_autoTimerCurrent, 40, 5, -0.5, 5, distanceBtwnWheels, false);
+    case slalomPath:
+      slalomPath();
       break;
-    case 3:
-      //Turn Left to face cone
-      driveController.calculateAutonomousCircle(m_autoTimerCurrent, 0, 1, -0.5, 3, distanceBtwnWheels, false);
-
-      //Drive into cone A3
-      driveController.calculateAutonomousDrive(m_autoTimerCurrent, 1, 5, 1.0, 1.0, -0.5);
-
-      //Turn Left to face back away from cone while heading backwards
-      driveController.calculateAutonomousCircle(m_autoTimerCurrent, 6, 2, -0.5, 5, distanceBtwnWheels, false);
-
-      //Drive Forward
-      driveController.calculateAutonomousDrive(m_autoTimerCurrent, 8, 3, -1.0, -1.0, -0.5);
-
-      //Circle Around D5 CCW
-      driveController.calculateAutonomousCircle(m_autoTimerCurrent, 11, 5, 0.5, 5, distanceBtwnWheels, false);
-
-      //Head into cone A6
-      driveController.calculateAutonomousDrive(m_autoTimerCurrent, 16, 5, -1.0, -1.0, -0.5);
-
-      //Turn Left to face back away from cone while heading backwards
-      driveController.calculateAutonomousCircle(m_autoTimerCurrent, 21, 2, -0.5, 5, distanceBtwnWheels, false);
-
-      //Drive Forward
-      driveController.calculateAutonomousDrive(m_autoTimerCurrent, 23, 3, 1.0, 1.0, -0.5);
-
-      //Turn around D7 CCW
-      driveController.calculateAutonomousCircle(m_autoTimerCurrent, 26, 2, 0.5, 5, distanceBtwnWheels, false);
-
-      //Head forwards past D8
-      driveController.calculateAutonomousDrive(m_autoTimerCurrent, 28, 4, 1.0, 1.0, -0.5);
-
-      //Turn around D8 CCW
-      driveController.calculateAutonomousCircle(m_autoTimerCurrent, 30, 2, 0.5, 5, distanceBtwnWheels, false);
-
-      //Head into cone A9
-      driveController.calculateAutonomousDrive(m_autoTimerCurrent, 32, 5, 1.0, 1.0, -0.5);
-
-      //Circle into finish zone
-      driveController.calculateAutonomousCircle(m_autoTimerCurrent, 37, 4, -0.5, 15, distanceBtwnWheels, false);
-
-
+    case bouncePath:
+      bouncePath();
       break;
     }
   }
@@ -288,14 +201,7 @@ public class Robot extends TimedRobot
 
     if (driveType)
     {
-      if (Math.abs(m_driverController.getY(Hand.kLeft)) > 0.1)
-      {
-        selectedDrive = 0;
-      }
-      else
-      {
-        selectedDrive = 1;
-      }
+      selectedDrive = (Math.abs(m_driverController.getY(Hand.kLeft)) > 0.1) ? 0 : 1;
     }
     else
     { 
@@ -305,24 +211,6 @@ public class Robot extends TimedRobot
     RyValue = m_driverController.getY(Hand.kRight);
     RxValue = m_driverController.getX(Hand.kRight);
     LyValue = m_driverController.getY(Hand.kLeft);
-
-    switch(Dpad.get())
-    {
-      case 1:
-        //turn right
-        break;
-      case 2:
-        //turn forward
-        break;
-      case 3:
-        //turn right
-        break;
-      case 4:
-        //turn back
-        break;
-      default:
-        break;
-    }
 
     execute();
   }
@@ -353,6 +241,7 @@ public class Robot extends TimedRobot
         break;
     }
   }
+
   public void checkSolenoidCurrentTime(double currentTime)
   {
     if(currentTime > .5)
@@ -360,8 +249,103 @@ public class Robot extends TimedRobot
       solenoid.set(Value.kOff);
     }
   }
-}
 
+  public void barrelRacing()
+  {
+    //forward for 7.5 ft
+    driveController.calculateAutonomousDrive(m_autoTimerCurrent, 0, 5 , 1.0, 1.0, -0.5);
 
+    //drive in a circle with (radius (3ft), speed (-0.5))
+    driveController.calculateAutonomousCircle(m_autoTimerCurrent, 5, 5, -0.5, 3, true);
   
+    //forward for 9 ft
+    driveController.calculateAutonomousDrive(m_autoTimerCurrent, 10, 5 , 1.0, 1.0, -0.5);
+  
+    //drive in a circle with (radius (3ft), speed (-0.5))
+    driveController.calculateAutonomousCircle(m_autoTimerCurrent, 15, 5, -0.5, 3, false);
+  
+    //forward for 7 ft
+    driveController.calculateAutonomousDrive(m_autoTimerCurrent, 20, 5 , 1.0, 1.0, -0.5);
+  
+    //drive in a circle with (radius (3ft), speed (-0.5))
+    driveController.calculateAutonomousCircle(m_autoTimerCurrent, 15, 5, -0.5, 3, false);
+  
+    //forward for 20 ft
+    driveController.calculateAutonomousDrive(m_autoTimerCurrent, 30, 5 , 1.0, 1.0, -0.5);
+  
+    //execute function
+    driveController.execute();
+  }
 
+  public void slalomPath()
+  {
+    //drive in a circle with (radius (0ft), speed (-0.5))
+    driveController.calculateAutonomousCircle(m_autoTimerCurrent, 0, 5, -0.5, 0, false);
+
+    //forward for 7 ft
+    driveController.calculateAutonomousDrive(m_autoTimerCurrent, 5, 5, 1.0, 1.0, -0.5);
+  
+    //drive in a circle with (radius (5ft), speed (-0.5))
+    driveController.calculateAutonomousCircle(m_autoTimerCurrent, 10, 5, -0.5, 5, true);
+  
+    //forward for 7 ft
+    driveController.calculateAutonomousDrive(m_autoTimerCurrent, 15, 5, 1.0, 1.0, -0.5);
+  
+    //drive in a circle with (radius (2.5ft), speed (-0.5))
+    driveController.calculateAutonomousCircle(m_autoTimerCurrent, 20, 5, -0.5, 2.5, false);
+  
+    //forward for 7 ft
+    driveController.calculateAutonomousDrive(m_autoTimerCurrent, 25, 5, 1.0, 1.0, -0.5);
+  
+    //drive in a circle with (radius (5ft), speed (-0.5))
+    driveController.calculateAutonomousCircle(m_autoTimerCurrent, 30, 5, -0.5, 5, true);
+  
+    //forward for 7 ft
+    driveController.calculateAutonomousDrive(m_autoTimerCurrent, 35, 5, 1.0, 1.0, -0.5);
+  
+    //drive in a circle with (radius (0ft), speed (-0.5))
+    driveController.calculateAutonomousCircle(m_autoTimerCurrent, 40, 5, -0.5, 5, false);
+  }
+
+  public void bouncePath()
+  {
+    //Turn Left to face cone
+    driveController.calculateAutonomousCircle(m_autoTimerCurrent, 0, 1, -0.5, 3, false);
+
+    //Drive into cone A3
+    driveController.calculateAutonomousDrive(m_autoTimerCurrent, 1, 5, 1.0, 1.0, -0.5);
+  
+    //Turn Left to face back away from cone while heading backwards
+    driveController.calculateAutonomousCircle(m_autoTimerCurrent, 6, 2, -0.5, 5, false);
+  
+    //Drive Forward
+    driveController.calculateAutonomousDrive(m_autoTimerCurrent, 8, 3, -1.0, -1.0, -0.5);
+  
+    //Circle Around D5 CCW
+    driveController.calculateAutonomousCircle(m_autoTimerCurrent, 11, 5, 0.5, 5, false);
+  
+    //Head into cone A6
+    driveController.calculateAutonomousDrive(m_autoTimerCurrent, 16, 5, -1.0, -1.0, -0.5);
+  
+    //Turn Left to face back away from cone while heading backwards
+    driveController.calculateAutonomousCircle(m_autoTimerCurrent, 21, 2, -0.5, 5, false);
+  
+    //Drive Forward
+    driveController.calculateAutonomousDrive(m_autoTimerCurrent, 23, 3, 1.0, 1.0, -0.5);
+  
+    //Turn around D7 CCW
+    driveController.calculateAutonomousCircle(m_autoTimerCurrent, 26, 2, 0.5, 5, false);
+  
+    //Head forwards past D8
+    driveController.calculateAutonomousDrive(m_autoTimerCurrent, 28, 4, 1.0, 1.0, -0.5);
+  
+    //Turn around D8 CCW
+    driveController.calculateAutonomousCircle(m_autoTimerCurrent, 30, 2, 0.5, 5, false);
+  
+    //Head into cone A9
+    driveController.calculateAutonomousDrive(m_autoTimerCurrent, 32, 5, 1.0, 1.0, -0.5);
+  
+    //Circle into finish zone
+    driveController.calculateAutonomousCircle(m_autoTimerCurrent, 37, 4, -0.5, 15, false);    
+  }
+}

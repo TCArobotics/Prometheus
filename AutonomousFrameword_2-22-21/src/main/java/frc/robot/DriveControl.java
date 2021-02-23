@@ -31,17 +31,18 @@ public class DriveControl
     //private final Gyroscope myGyroscope;
 
     //Variables
-    private boolean driveType; //Stores the state of drive for joysticks
+    private boolean driveType; //Stores the state of drive for joysticks (1 = arcade/curvature, 2 = tank)
     private double speed; //Stores the speed the robot is going (-0.5 or -1)
     private boolean isStopped; //Stores if the robot is stopped
     private double leftMultiplier; //Value to multiply left speed by
     private double rightMultiplier; //Value to multiply right speed by
     private boolean rotateToAngle; //whether the robot is currently turning to a specific angle
+    private double distanceBtwnWheels = 0; //set this to the actual value
 
     //Variables that do not have default values
     private double LeftDriveInput; //Stores the actual left input value for execute
     private double RightDriveInput; //Stores the actual right input value for execute
-    private int selectedDrive; //Stores the actual drive type used by the execute function
+    private int selectedDrive; //Stores the actual drive type used by the execute function (1 = arcade, 2 = curvature, 3 = tank)
 
     public DriveControl(/*Gyroscope _gyroscope*/)
     {
@@ -69,7 +70,8 @@ public class DriveControl
         rightMultiplier = 0.95;
         rotateToAngle = false;
     }
-    public void calculate(){
+    public void calculate()
+    {
         if(rbButton.get())
         {
             driveType = !driveType;
@@ -77,11 +79,7 @@ public class DriveControl
 
         if(lbButton.get())
         {
-            speed -=.25;
-            if (speed == -1.25)
-            {
-                speed = -0.5;
-            }
+            speed = (speed == -1.25) ? -0.5 : speed -0.25;    //if speed goes past the max, reset the cycle, then subtract .25 from the speed
         }
         
         if(startButton.get())
@@ -94,20 +92,13 @@ public class DriveControl
         if (driveType) //If driveType is set to Arcade/Curvature
         {
             RightDriveInput = driveController.getX(Hand.kRight);
-            if (Math.abs(driveController.getY(Hand.kLeft)) > 0.1)
-            {
-                selectedDrive = 0;
-            }
-            else
-            {
-                selectedDrive = 1;
-            }
+            selectedDrive = (Math.abs(driveController.getY(Hand.kLeft)) > 0.1) ? 0 : 1; //change selected drive if left bumper is pressed enough
         }
 
         else //If driveType is set to Tank
         {
             RightDriveInput = driveController.getY(Hand.kRight);
-            selectedDrive = 2;
+            selectedDrive = 2; //change to tank drive
         }
 
         rotateToAngle = false;
@@ -153,26 +144,16 @@ public class DriveControl
         }
     }  
 
-    public void calculateAutonomousCircle(double _currentTime, double _startTime, double _duration, double _speed, double _radius, double _distanceBtwnWheels, boolean _isClockwise)
+    public void calculateAutonomousCircle(double _currentTime, double _startTime, double _duration, double _speed, double _radius, boolean _isClockwise)
     {
         //Calculates whether the time span is correct for the function to run
         //REMEMBER TO MEASURE DISTANCE BETWEEN WHEELS
         if ((_currentTime >= _startTime) && (_currentTime <= _startTime + _duration))
             {
-                if (_isClockwise == true)
-                    {
-                        this.selectedDrive = 2;
-                        this.RightDriveInput = 1 / (1 + _radius / _distanceBtwnWheels);
-                        this.LeftDriveInput = 1;
-                        this.speed = _speed;
-                    }
-                    else
-                    {
-                        this.selectedDrive = 2;
-                        this.RightDriveInput = 1;
-                        this.LeftDriveInput = 1 / (1 + _radius / _distanceBtwnWheels);
-                        this.speed = _speed;
-                    }
+                this.selectedDrive = 2;
+                this.speed = _speed;
+                this.LeftDriveInput = (_isClockwise) ? 1 : 1 / (1 + _radius / distanceBtwnWheels); //RETHINK THIS BECAUSE IZ NOT WORK RIGHT
+                this.RightDriveInput = (_isClockwise) ? 1 / (1 + _radius / distanceBtwnWheels) : 1;
             }
     }
     
@@ -182,15 +163,15 @@ public class DriveControl
         switch(selectedDrive)
         {
         case 0:
-            m_robotDrive.curvatureDrive((isStopped? 0:1) * speed *  LeftDriveInput, 
+            m_robotDrive.curvatureDrive((isStopped ? 0 : 1) * speed *  LeftDriveInput, 
             (isStopped? 0:1) * speed * RightDriveInput, false);
             break;
         case 1:
-            m_robotDrive.arcadeDrive((isStopped? 0:1) * speed * LeftDriveInput, 
+            m_robotDrive.arcadeDrive((isStopped ? 0 : 1) * speed * LeftDriveInput, 
             (isStopped? 0:1) * speed * RightDriveInput);
             break;
         case 2:
-            m_robotDrive.tankDrive((isStopped? 0:1) * speed * leftMultiplier * LeftDriveInput, 
+            m_robotDrive.tankDrive((isStopped ? 0 : 1) * speed * leftMultiplier * LeftDriveInput, 
             (isStopped? 0:1) * speed * rightMultiplier * RightDriveInput);
             break;
         }
