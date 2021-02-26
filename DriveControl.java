@@ -8,7 +8,8 @@ import edu.wpi.first.wpilibj.SpeedControllerGroup;
 import edu.wpi.first.wpilibj.PWMVictorSPX;
 
 
-public class DriveControl{
+public class DriveControl
+{
     private final XboxController driveController;
     private final DPadCalc Dpad;
     private final Debouncer startButton;
@@ -27,22 +28,24 @@ public class DriveControl{
     private final DifferentialDrive m_robotDrive;
 
     //Gyroscope
-    private final Gyroscope myGyroscope;
+    //private final Gyroscope myGyroscope;
 
     //Variables
-    private boolean driveType; //Stores the state of drive for joysticks
+    private boolean driveType; //Stores the state of drive for joysticks (1 = arcade/curvature, 2 = tank)
     private double speed; //Stores the speed the robot is going (-0.5 or -1)
     private boolean isStopped; //Stores if the robot is stopped
     private double leftMultiplier; //Value to multiply left speed by
     private double rightMultiplier; //Value to multiply right speed by
     private boolean rotateToAngle; //whether the robot is currently turning to a specific angle
+    private double distanceBtwnWheels = 0; //set this to the actual value
 
     //Variables that do not have default values
     private double LeftDriveInput; //Stores the actual left input value for execute
     private double RightDriveInput; //Stores the actual right input value for execute
-    private int selectedDrive; //Stores the actual drive type used by the execute function
+    private int selectedDrive; //Stores the actual drive type used by the execute function (1 = arcade, 2 = curvature, 3 = tank)
 
-    public DriveControl(Gyroscope _gyroscope){
+    public DriveControl(/*Gyroscope _gyroscope*/)
+    {
         m_frontLeft = new PWMVictorSPX(RobotMap.kFrontLeftPort);
         m_rearLeft = new PWMVictorSPX(RobotMap.kRearLeftPort);
         m_frontRight = new PWMVictorSPX(RobotMap.kFrontRightPort);
@@ -58,7 +61,7 @@ public class DriveControl{
         rbButton = new Debouncer(driveController, RobotMap.kRBPort);
         startButton = new Debouncer(driveController, RobotMap.kStartPort);
 
-        myGyroscope = _gyroscope;
+        //myGyroscope = _gyroscope;
 
         driveType = true;
         speed = -1;
@@ -67,7 +70,8 @@ public class DriveControl{
         rightMultiplier = 0.95;
         rotateToAngle = false;
     }
-    public void calculate(){
+    public void calculate()
+    {
         if(rbButton.get())
         {
             driveType = !driveType;
@@ -75,11 +79,7 @@ public class DriveControl{
 
         if(lbButton.get())
         {
-            speed -=.25;
-            if (speed == -1.25)
-            {
-                speed = -0.5;
-            }
+            speed = (speed == -1.25) ? -0.5 : speed -0.25;    //if speed goes past the max, reset the cycle, then subtract .25 from the speed
         }
         
         if(startButton.get())
@@ -92,24 +92,17 @@ public class DriveControl{
         if (driveType) //If driveType is set to Arcade/Curvature
         {
             RightDriveInput = driveController.getX(Hand.kRight);
-            if (Math.abs(driveController.getY(Hand.kLeft)) > 0.1)
-            {
-                selectedDrive = 0;
-            }
-            else
-            {
-                selectedDrive = 1;
-            }
+            selectedDrive = (Math.abs(driveController.getY(Hand.kLeft)) > 0.1) ? 0 : 1; //change selected drive if left bumper is pressed enough
         }
 
         else //If driveType is set to Tank
         {
             RightDriveInput = driveController.getY(Hand.kRight);
-            selectedDrive = 2;
+            selectedDrive = 2; //change to tank drive
         }
 
         rotateToAngle = false;
-        switch(Dpad.get())
+        /*switch(Dpad.get())
         {
         case 1:
             myGyroscope.setPIDSetpoint(-90.0);
@@ -135,34 +128,56 @@ public class DriveControl{
             selectedDrive = 1;
             RightDriveInput = myGyroscope.calculate();
             LeftDriveInput = 0;
-        }
+        }*/
     }
-    public void calculateb(int _selectedDrive, double _rightInput, double _leftInput, double _speed)
+
+    //Calculate motor movement based
+    public void calculateAutonomousDrive(double _currentTime, double _startTime, double _duration, double _rightInput, double _leftInput, double _speed)
     {
-        this.selectedDrive = _selectedDrive;
-        this.RightDriveInput = _rightInput;
-        this.LeftDriveInput = _leftInput;
-        this.speed = _speed;
+    	//Calculates whether the time span is correct for the function to run
+    	if ((_currentTime >= _startTime) && (_currentTime <= _startTime + _duration))
+        {
+            this.selectedDrive = 2;
+            this.RightDriveInput = _rightInput;
+            this.LeftDriveInput = _leftInput;
+            this.speed = _speed;
+        }
+    }  
+
+    public void calculateAutonomousCircle(double _currentTime, double _startTime, double _duration, double _speed, double _radius, boolean _isClockwise)
+    {
+        //Calculates whether the time span is correct for the function to run
+        //REMEMBER TO MEASURE DISTANCE BETWEEN WHEELS
+        if ((_currentTime >= _startTime) && (_currentTime <= _startTime + _duration))
+            {
+                this.selectedDrive = 2;
+                this.speed = _speed;
+                this.LeftDriveInput = (_isClockwise) ? 1 : 1 / (1 + _radius / distanceBtwnWheels); //RETHINK THIS BECAUSE IZ NOT WORK RIGHT
+                this.RightDriveInput = (_isClockwise) ? 1 / (1 + _radius / distanceBtwnWheels) : 1;
+            }
     }
+    
+
     public void execute()
     {
         switch(selectedDrive)
         {
         case 0:
-            m_robotDrive.curvatureDrive((isStopped? 0:1) * speed *  LeftDriveInput, 
+            m_robotDrive.curvatureDrive((isStopped ? 0 : 1) * speed *  LeftDriveInput, 
             (isStopped? 0:1) * speed * RightDriveInput, false);
             break;
         case 1:
-            m_robotDrive.arcadeDrive((isStopped? 0:1) * speed * LeftDriveInput, 
+            m_robotDrive.arcadeDrive((isStopped ? 0 : 1) * speed * LeftDriveInput, 
             (isStopped? 0:1) * speed * RightDriveInput);
             break;
         case 2:
-            m_robotDrive.tankDrive((isStopped? 0:1) * speed * leftMultiplier * LeftDriveInput, 
+            m_robotDrive.tankDrive((isStopped ? 0 : 1) * speed * leftMultiplier * LeftDriveInput, 
             (isStopped? 0:1) * speed * rightMultiplier * RightDriveInput);
             break;
         }
     }
-    public Gyroscope getGyroscope(){
+    /*public Gyroscope getGyroscope()
+    {
         return this.myGyroscope;
-    }
+    }*/
 }

@@ -10,7 +10,7 @@ public class Debouncer
     double latest;
     double debounce_period;
 
-    public Debouncer (XboxController _myController, int _buttonnum)
+    public Debouncer(XboxController _myController, int _buttonnum)
     {
         this.myController = _myController;
         this.buttonnum = _buttonnum;
@@ -24,7 +24,7 @@ public class Debouncer
         this.latest = 0;
         this.debounce_period = _period;
     }
-    public void setDeebouncePeriod(float _period)
+    public void setDebouncePeriod(float _period)
     {
         this.debounce_period = _period;
     }
