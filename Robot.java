@@ -1,4 +1,3 @@
-
 /*----------------------------------------------------------------------------*/
 /* Copyright (c) 2017-2018 FIRST. All Rights Reserved.                        */
 /* Open Source Software - may be modified and shared by FRC teams. The code   */
@@ -11,8 +10,7 @@ package frc.robot;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.cameraserver.CameraServer;
+import edu.wpi.first.wpilibj.XboxController;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -23,22 +21,24 @@ import edu.wpi.first.cameraserver.CameraServer;
  */
 public class Robot extends TimedRobot 
 {
-  //Autonomous variables
+  /* Variable naming conventions: 
+  camelCase, 
+  C[name] for constants
+  */
+
   private static final String kDefaultAuto = "Default";
   private static final String kCustomAuto = "My Auto";
   private String m_autoSelected;
-  private double m_autoTimerCurrent;
-  private double m_autoTimerFirst;
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
-  private Gyroscope driveroscope;
-  private DriveControl drive;
-  private ManipulatorControl manipulator;
+  
+  final XboxController m_driverController = new XboxController(RobotMap.kDriverControllerPort);
+  final DriveControl driveController = new DriveControl();
 
-  //Controllers for solenoids
+  private final String barrelRacing = "BarrelRacing"; //the different choices for autonomousChoice
+  private final String slalomPath = "SlalomPath";
+  private final String bouncePath = "BouncePath";
+  private String autonomousChoice = slalomPath; //which path to default to
 
-  //Controllers for navx gyro
-
-  //Variables that have default values set in robotInit()
 
   /**
    * This function is run when the robot is first started up and should be
@@ -49,10 +49,7 @@ public class Robot extends TimedRobot
   {
     m_chooser.setDefaultOption("Default Auto", kDefaultAuto);
     m_chooser.addOption("My Auto", kCustomAuto);
-    SmartDashboard.putData("Auto choices", m_chooser);
-    driveroscope = new Gyroscope();
-    drive = new DriveControl(driveroscope);
-    manipulator = new ManipulatorControl();
+    //SmartDashboard.putData("Auto choices", m_chooser);
   }
 
   /**
@@ -66,7 +63,7 @@ public class Robot extends TimedRobot
   @Override
   public void robotPeriodic() 
   {
-
+    //System.out.println("In robotPeriodic");
   }
 
   /**
@@ -83,8 +80,8 @@ public class Robot extends TimedRobot
   @Override
   public void autonomousInit() {
     m_autoSelected = m_chooser.getSelected();
-    m_autoTimerFirst = Timer.getFPGATimestamp();
     // m_autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
+    System.out.println("Auto selected: " + m_autoSelected);
   }
 
   /**
@@ -92,24 +89,21 @@ public class Robot extends TimedRobot
    */
   @Override
   public void autonomousPeriodic() {
-    switch (m_autoSelected) {
-      case kCustomAuto:
-      while (m_autoTimerCurrent - m_autoTimerFirst <= 5)
-      {
-        m_autoTimerCurrent = Timer.getFPGATimestamp();
-        drive.calculateb(2, 1.0, 1.0, -0.5);
-      }
-          break;
-      case kDefaultAuto:
-      default:
-      while (m_autoTimerCurrent - m_autoTimerFirst <= 5)
-      {
-        m_autoTimerCurrent = Timer.getFPGATimestamp();
-        drive.calculateb(2, 1, 1, -0.5);
-      }
-        break;
+    System.out.println("In AutonomousPeriodic");
+    //edit time for each section to refine accuracy
+
+    switch(autonomousChoice) 
+    {
+    case barrelRacing:
+      driveController.barrelRacing();
+      break;
+    case slalomPath:
+      driveController.slalomPath();
+      break;
+    case bouncePath:
+      driveController.bouncePath();
+      break;
     }
-    drive.execute();
   }
 
   /**
@@ -118,12 +112,13 @@ public class Robot extends TimedRobot
   @Override
   public void teleopPeriodic() 
   {
-    drive.calculate();
-    manipulator.calculate();
-    drive.execute();
     // Drive with split arcade drive.
     // That means that the Y axis of the left stick moves forward
     // and backward, and the X of the right stick turns left and right.
+    
+    driveController.calculate();
+
+    driveController.execute();
   }
 
   /**
@@ -131,6 +126,6 @@ public class Robot extends TimedRobot
    */
   @Override
   public void testPeriodic() {
-    
+    System.out.println("Test!");
   }
 }

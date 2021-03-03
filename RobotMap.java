@@ -5,7 +5,7 @@ public class RobotMap
     public static final int kFrontLeftPort = 8;
     public static final int kRearLeftPort = 9;
     public static final int kFrontRightPort = 0;
-    public static final int kRearRightPort =1;
+    public static final int kRearRightPort = 1;
 
     public static final int kDriverControllerPort = 0;
     public static final int kManipulatorControllerPort = 1;

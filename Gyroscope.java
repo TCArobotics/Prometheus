@@ -1,9 +1,10 @@
-package frc.robot;
+/*package frc.robot;
 
 import com.kauailabs.navx.frc.AHRS;
 import edu.wpi.first.wpilibj.controller.PIDController;
 
-public class Gyroscope{
+public class Gyroscope
+{
     private static final double kP = 0.03; //turn to angle P constant that will need to be tuned
     private static final double kI = 0; //turn to angle I constant that will need to be tuned
     private static final double kD = 0; //turn to angle D constant that will need to be tuned
@@ -31,4 +32,4 @@ public class Gyroscope{
     public void setPIDSetpoint(double _setPoint){
         turnController.setSetpiont(_setPoint);
     }
-}
+}*/

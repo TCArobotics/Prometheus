@@ -14,11 +14,11 @@ public class DPadCalc
     public int get()
     {
         double solution = 0;
-        double xAxis = myController.getRawAxis(RobotMap.kDpadHorizontalPort) + 2;
+        double xAxis = myController.getRawAxis(RobotMap.kDpadHorizontalPort) + 2; // left = 1, up = 2, right = 3, down = 4
         double yAxis = -myController.getRawAxis(RobotMap.kDpadVerticalPort) + 3;
-        if(!((xAxis != 0) == (yAxis != 0)))
+        if(!((xAxis != 2) == (yAxis != 3))) //(xAxis in center) xor (yAxis in center)
         {
-            solution = xAxis == 0? yAxis: xAxis;
+            solution = xAxis == 2? yAxis: xAxis;
         }
         return (int)solution;
     }
