@@ -3,6 +3,7 @@ package frc.robot;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
 
+//wait for debouce_period amount of seconds before checking for a button press. This prevents the controller from sending thousands of button presses per second.
 public class Debouncer
 {
     XboxController myController;
